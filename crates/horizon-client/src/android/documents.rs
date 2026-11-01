@@ -3,8 +3,9 @@ use horizon_client::{
     Result,
     content_files::{self, Kind},
     hud::{HudAtlas, HudBatch, rgba},
-    ui_theme::{Face, Ui, color},
+    ui_theme::{Face, Ui},
 };
+use crate::launcher_theme::color;
 use jni::{
     JNIEnv,
     objects::{JObject, JString},

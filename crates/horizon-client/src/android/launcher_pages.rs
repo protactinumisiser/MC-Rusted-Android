@@ -1,5 +1,30 @@
 use super::*;
-use horizon_client::{osk::Output, ui_theme::color};
+use crate::launcher_theme::{Icon, color, draw_icon};
+use horizon_client::osk::Output;
+
+/// Height of the bottom bar of round icons, and the strip of the screen the
+/// pages leave free for it (the Play button rises 16 dp above the bar).
+const NAV_HEIGHT: f32 = 84.0;
+const NAV_RESERVED: f32 = 100.0;
+
+fn page_icon(page: Page) -> Icon {
+    match page {
+        Page::Play => Icon::Play,
+        Page::Mods => Icon::Mods,
+        Page::Packs => Icon::Packs,
+        Page::Shaders => Icon::Shaders,
+        Page::Installed => Icon::Files,
+        Page::Settings => Icon::Settings,
+    }
+}
+fn page_label(page: Page, compact: bool) -> &'static str {
+    match (page, compact) {
+        (Page::Installed, true) => "Files",
+        (Page::Settings, true) => "Setup",
+        _ => page.name(),
+    }
+}
+
 use winit::{
     event::{KeyEvent, Touch},
     keyboard::{KeyCode, PhysicalKey},
@@ -72,7 +97,7 @@ pub(super) fn button(
         y,
         w,
         h,
-        2.0,
+        14.0,
         if accent { color::ACCENT } else { color::RAISED },
     );
     let padding = (w * 0.12).clamp(4.0, 12.0);
@@ -120,7 +145,7 @@ fn toggle(
         48.0,
         24.0,
         12.0,
-        if on { color::TEXT } else { color::HOVER },
+        if on { color::ACCENT } else { color::HOVER },
     );
     ui.rounded(
         x + w - if on { 26.0 } else { 50.0 },
@@ -128,7 +153,7 @@ fn toggle(
         20.0,
         20.0,
         10.0,
-        if on { color::BG } else { color::TEXT },
+        if on { color::ON_ACCENT } else { color::TEXT },
     );
     targets.push(([x, y, w, h], action));
 }
@@ -219,10 +244,12 @@ impl Launcher {
         if let Some(bottom) = crate::native_ime::viewport_bottom() {
             ui.h = ui.h.min(bottom as f32 / ui.density);
         }
-        let (w, h) = (ui.w, ui.h);
+        let full_h = ui.h;
+        let nav_top = full_h - NAV_HEIGHT;
+        let (w, h) = (ui.w, full_h - NAV_RESERVED);
         let scale = ui.density / ui.batch.scale;
         ui.batch
-            .fill(&gui.atlas, 0.0, 0.0, w * scale, h * scale, color::BG);
+            .fill(&gui.atlas, 0.0, 0.0, w * scale, full_h * scale, color::BG);
         ui.text(
             Face::Medium,
             if w < 400.0 {
@@ -235,41 +262,36 @@ impl Launcher {
             32.0,
             if w < 700.0 { 12.0 } else { 28.0 },
             color::TEXT,
-            &format!("Horizon Android {}", crate::backend::VERSION),
+            &format!("MC-Rusted Launcher {}", crate::backend::VERSION),
         );
-        button(
-            &mut ui,
-            &mut self.targets,
-            [
-                if w < 700.0 { 32.0 } else { w - 320.0 },
-                if w < 700.0 { 47.0 } else { 24.0 },
-                if w < 700.0 { w - 64.0 } else { 288.0 },
-                if w < 700.0 { 34.0 } else { 46.0 },
-            ],
-            &self.login.status(&self.catalog.config.name),
-            Action::Account,
-            self.login.signed_in,
+        // The account lives in the bottom bar; its status sits under the title.
+        let account_status = self.login.status(&self.catalog.config.name);
+        let status_line = ui.fit_text(Face::Regular, 14.0, &account_status, w - 64.0);
+        ui.text(
+            Face::Regular,
+            14.0,
+            32.0,
+            if w < 700.0 { 44.0 } else { 74.0 },
+            if self.login.signed_in {
+                color::ACCENT
+            } else {
+                color::MUTED
+            },
+            &status_line,
         );
-        let tabs = Page::ALL.len() as f32;
-        let tab_margin = if w < 700.0 { 16.0 } else { 32.0 };
-        let tab_width = (w - 2.0 * tab_margin) / tabs;
-        for (i, page) in Page::ALL.iter().enumerate() {
-            let x = tab_margin + i as f32 * tab_width;
-            button(
-                &mut ui,
-                &mut self.targets,
-                [x, 88.0, tab_width - 4.0, 42.0],
-                if w < 700.0 {
-                    match page {
-                        Page::Installed => "Files",
-                        Page::Settings => "Setup",
-                        _ => page.name(),
-                    }
-                } else {
-                    page.name()
-                },
-                Action::Page(*page),
-                *page == self.catalog.page,
+        // The current section, as a round icon and its name.
+        {
+            let band = 92.0;
+            let current = self.catalog.page;
+            ui.rounded(32.0, band, 34.0, 34.0, 17.0, color::TONAL);
+            draw_icon(&mut ui, page_icon(current), 49.0, band + 17.0, 18.0, color::ACCENT);
+            ui.text(
+                Face::Medium,
+                20.0,
+                78.0,
+                band + 3.0,
+                color::TEXT,
+                page_label(current, false),
             );
         }
         let compact = w < 700.0;
@@ -417,19 +439,19 @@ impl Launcher {
                     progress.stage.label(),
                 );
             } else {
-                button(
-                    &mut ui,
-                    &mut self.targets,
-                    [32.0, h - 100.0, 320.0, 60.0],
+                ui.text(
+                    Face::Regular,
+                    15.0,
+                    32.0,
+                    h - 70.0,
+                    color::MUTED,
                     if installed {
-                        "Play"
+                        "Tap the orange Play button to start"
                     } else if self.error.is_some() {
-                        "Retry installation"
+                        "Tap the orange Play button to retry the installation"
                     } else {
-                        "Download Minecraft 26.3"
+                        "Tap the orange Play button to download Minecraft 26.3"
                     },
-                    Action::Play,
-                    true,
                 );
             }
         } else if page.is_catalog() {
@@ -1004,6 +1026,97 @@ impl Launcher {
             Action::Repository,
             false,
         );
+        // ---- bottom bar: round section icons around the Play button ----
+        {
+            let compact = w < 700.0;
+            let current = self.catalog.page;
+            let installing = self.worker.is_some();
+            ui.rounded(0.0, nav_top, w, NAV_HEIGHT + 28.0, 24.0, color::SURFACE);
+            let slot = w / 7.0;
+            let d = (slot - 10.0).clamp(34.0, 46.0);
+            let items: [(usize, Icon, &str, Action, bool, bool); 6] = [
+                (0, Icon::Mods, page_label(Page::Mods, compact), Action::Page(Page::Mods), current == Page::Mods, false),
+                (1, Icon::Packs, page_label(Page::Packs, compact), Action::Page(Page::Packs), current == Page::Packs, false),
+                (2, Icon::Shaders, page_label(Page::Shaders, compact), Action::Page(Page::Shaders), current == Page::Shaders, false),
+                (4, Icon::Files, page_label(Page::Installed, compact), Action::Page(Page::Installed), current == Page::Installed, false),
+                (5, Icon::Settings, page_label(Page::Settings, compact), Action::Page(Page::Settings), current == Page::Settings, false),
+                (6, Icon::Account, "Account", Action::Account, self.login.signed_in, true),
+            ];
+            for (index, icon, label, action, active, _) in items {
+                let cx = slot * (index as f32 + 0.5);
+                let cy = nav_top + 8.0 + d / 2.0;
+                ui.rounded(
+                    cx - d / 2.0,
+                    cy - d / 2.0,
+                    d,
+                    d,
+                    d / 2.0,
+                    if active { color::TONAL } else { color::RAISED },
+                );
+                draw_icon(
+                    &mut ui,
+                    icon,
+                    cx,
+                    cy,
+                    d * 0.5,
+                    if active { color::ACCENT } else { color::MUTED },
+                );
+                let label_color = if active { color::ACCENT } else { color::MUTED };
+                let label_width = ui.measure(Face::Medium, 11.0, label);
+                ui.text(
+                    Face::Medium,
+                    11.0,
+                    cx - label_width / 2.0,
+                    nav_top + 8.0 + d + 3.0,
+                    label_color,
+                    label,
+                );
+                self.targets
+                    .push(([cx - slot / 2.0, nav_top, slot, NAV_HEIGHT], action));
+            }
+            // The Play button: big, round, orange, in the middle. On the Play
+            // page it starts the game (or the installation); from any other
+            // page it goes back to the Play page first.
+            let cx = w / 2.0;
+            let fab = 68.0;
+            let fab_top = nav_top - 16.0;
+            ui.rounded(cx - fab / 2.0 - 6.0, fab_top - 6.0, fab + 12.0, fab + 12.0, fab / 2.0 + 6.0, color::BG);
+            ui.rounded(
+                cx - fab / 2.0,
+                fab_top,
+                fab,
+                fab,
+                fab / 2.0,
+                if installing { color::HOVER } else { color::ACCENT },
+            );
+            draw_icon(
+                &mut ui,
+                Icon::Play,
+                cx + 2.0,
+                fab_top + fab / 2.0,
+                30.0,
+                if installing { color::MUTED } else { color::ON_ACCENT },
+            );
+            let play_width = ui.measure(Face::Medium, 11.0, "Play");
+            ui.text(
+                Face::Medium,
+                11.0,
+                cx - play_width / 2.0,
+                fab_top + fab + 5.0,
+                color::ACCENT,
+                "Play",
+            );
+            if !installing {
+                self.targets.push((
+                    [cx - slot / 2.0, fab_top - 6.0, slot, fab + 28.0],
+                    if current == Page::Play {
+                        Action::Play
+                    } else {
+                        Action::Page(Page::Play)
+                    },
+                ));
+            }
+        }
         if self.login.visible {
             self.list_targets.clear();
             self.list_view = None;

@@ -4,7 +4,8 @@ use super::{
     pages::{Action, button},
 };
 use crate::catalog::RendererMode;
-use horizon_client::ui_theme::{Face, Ui, color};
+use crate::launcher_theme::color;
+use horizon_client::ui_theme::{Face, Ui};
 
 pub(super) enum Kind {
     Aspect,
@@ -283,7 +284,7 @@ impl Chooser {
             ui.rounded(34.0, y + 10.0, 22.0, 22.0, 11.0, color::TEXT);
             ui.rounded(36.0, y + 12.0, 18.0, 18.0, 9.0, color::BG);
             if *selected {
-                ui.rounded(40.0, y + 16.0, 10.0, 10.0, 5.0, color::TEXT);
+                ui.rounded(40.0, y + 16.0, 10.0, 10.0, 5.0, color::ACCENT);
             }
             ui.text(Face::Medium, 19.0, 80.0, y + 8.0, color::TEXT, label);
             ui.text(Face::Regular, 14.0, 80.0, y + 40.0, color::MUTED, detail);
