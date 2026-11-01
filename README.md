@@ -8,8 +8,11 @@ General User Interface (GUI) and more improved touch controls, more features are
 
 **Android 9+ · Vulkan · Four touch schemes · Sandboxed `.hmod` mods**
 
-[Download APK](https://github.com/Vasysik/horizon-android/releases) · [Build & play](docs/android.md) · [Contribute](CONTRIBUTING_ANDROID.md) ·
-[Report an Android bug](https://github.com/Vasysik/horizon-android/issues/new?template=android-bug.yml)
+(docs/android.md) · [Contribute](CONTRIBUTING_ANDROID.md) ·
+
+## In Testing
+
+- Material 3 like GUI in testing. 
 
 ## What works
 
