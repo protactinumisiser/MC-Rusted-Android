@@ -10,7 +10,7 @@ mod custom;
 mod editor;
 pub use custom::CustomButton;
 pub mod layout;
-pub use layout::{Control, Mode, Settings};
+pub use layout::{Control, Mode, Settings, Style};
 /// Entity-placement items retain short-tap placement, like building blocks.
 pub fn item_places_entity_on_tap(item: &str) -> bool {
     let Some(id) = item.strip_prefix("minecraft:") else {
@@ -335,6 +335,58 @@ impl TouchControls {
                         || (bt == Button::LeftTrigger && state.triggers[0] > 0.0)
                         || (bt == Button::RightTrigger && state.triggers[1] > 0.0)
                 });
+            if self.settings.style == Style::Pojav {
+                let pressed = held
+                    || control != Control::Move
+                        && self
+                            .fingers
+                            .values()
+                            .any(|(_, point)| layout::contains(p.rect(self.aspect()), *point));
+                let label = match control {
+                    Control::Move => "",
+                    Control::Sprint => "SPRINT",
+                    Control::Jump if self.swimming || self.vertical_movement => "UP",
+                    Control::Jump => "JUMP",
+                    Control::Sneak if self.mounted => "EXIT",
+                    Control::Sneak if self.swimming || self.vertical_movement => "DOWN",
+                    Control::Sneak => "SNEAK",
+                    Control::Attack => "ATTACK",
+                    Control::Use => "USE",
+                    Control::Chat => "CHAT",
+                    Control::Pause => "ESC",
+                    Control::Settings => "MENU",
+                    Control::Inventory => "INV",
+                    Control::Debug => "F3",
+                    Control::Perspective => "F5",
+                    Control::Offhand => "SWAP",
+                    Control::Shield => "SHIELD",
+                };
+                pojav_control(
+                    b,
+                    a,
+                    control,
+                    [x, y, size, size],
+                    opacity,
+                    pressed,
+                    state.left,
+                    self.settings.mode == Mode::Dpad,
+                    label,
+                );
+                if let Some(e) = &self.editor
+                    && e.selected == Some(control)
+                {
+                    let white = rgba(255, 255, 255, 255);
+                    for (p, q) in [
+                        ([x - 1.0, y - 1.0], [x + size + 1.0, y - 1.0]),
+                        ([x - 1.0, y + size + 1.0], [x + size + 1.0, y + size + 1.0]),
+                        ([x - 1.0, y - 1.0], [x - 1.0, y + size + 1.0]),
+                        ([x + size + 1.0, y - 1.0], [x + size + 1.0, y + size + 1.0]),
+                    ] {
+                        line(b, a, p, q, white);
+                    }
+                }
+                continue;
+            }
             if control == Control::Move {
                 if self.settings.mode == Mode::Dpad {
                     let cell = size / 3.0;
@@ -972,6 +1024,104 @@ fn nine(
 
 fn sprite(b: &mut HudBatch, a: &HudAtlas, name: &str, [x, y, w, h]: [f32; 4], color: u32) {
     fitted_sprite(b, a, name, [x, y, w, h], color);
+}
+/// A solid disc, one non-overlapping quad per segment (like the mining ring's fill).
+fn disc(b: &mut HudBatch, a: &HudAtlas, center: [f32; 2], radius: f32, color: u32) {
+    let Some(white) = a.sprites.get("horizon/white") else {
+        return;
+    };
+    let uv = [[(white.u0 + white.u1) / 2.0, (white.v0 + white.v1) / 2.0]; 4];
+    for segment in circle_points().windows(2) {
+        let points = [segment[0], segment[1]]
+            .map(|p| [center[0] + radius * p[0], center[1] + radius * p[1]]);
+        b.quad([center, points[0], points[1], center], uv, color);
+    }
+}
+
+/// One Pojav-style key: a flat translucent square, a thin light edge, a bold label.
+fn pojav_key(
+    b: &mut HudBatch,
+    a: &HudAtlas,
+    [x, y, w, h]: [f32; 4],
+    label: &str,
+    pressed: bool,
+    opacity: f32,
+) {
+    let alpha = |v: f32| (v * opacity * 255.0).round().clamp(0.0, 255.0) as u8;
+    let fill = if pressed {
+        rgba(255, 255, 255, alpha(0.40))
+    } else {
+        rgba(20, 20, 20, alpha(0.45))
+    };
+    let edge = rgba(255, 255, 255, alpha(if pressed { 1.0 } else { 0.75 }));
+    let ink = rgba(255, 255, 255, alpha(1.0));
+    b.fill(a, x, y, w, h, fill);
+    let t = 1.0;
+    b.fill(a, x, y, w, t, edge);
+    b.fill(a, x, y + h - t, w, t, edge);
+    b.fill(a, x, y, t, h, edge);
+    b.fill(a, x + w - t, y, t, h, edge);
+    if label.is_empty() {
+        return;
+    }
+    let width = HudBatch::text_width(a, label);
+    let start = b.vertices.len();
+    b.text(a, label, x + (w - width) / 2.0, y + (h - 8.0) / 2.0, ink, false);
+    let scale = ((w - 6.0).max(1.0) / width.max(1.0))
+        .min((h - 6.0).max(1.0) / 8.0 * 0.55)
+        .min(2.5);
+    b.scale_since(start, x + w / 2.0, y + h / 2.0, scale, scale);
+}
+
+/// The Pojav look for every on-screen control: WASD keys for the D-pad, a ring and
+/// knob for the joystick, labelled keys for everything else.
+#[allow(clippy::too_many_arguments)]
+fn pojav_control(
+    b: &mut HudBatch,
+    a: &HudAtlas,
+    control: Control,
+    [x, y, w, h]: [f32; 4],
+    opacity: f32,
+    pressed: bool,
+    left: [f32; 2],
+    dpad: bool,
+    label: &str,
+) {
+    if control != Control::Move {
+        pojav_key(b, a, [x, y, w, h], label, pressed, opacity);
+        return;
+    }
+    let alpha = |v: f32| (v * opacity * 255.0).round().clamp(0.0, 255.0) as u8;
+    if dpad {
+        let cell = w / 3.0;
+        for (col, row, name, on) in [
+            (1.0, 0.0, "W", left[1] > 0.2),
+            (0.0, 1.0, "A", left[0] < -0.2),
+            (2.0, 1.0, "D", left[0] > 0.2),
+            (1.0, 2.0, "S", left[1] < -0.2),
+        ] {
+            pojav_key(
+                b,
+                a,
+                [x + cell * col, y + cell * row, cell, cell],
+                name,
+                on,
+                opacity,
+            );
+        }
+    } else {
+        let center = [x + w / 2.0, y + h / 2.0];
+        let radius = w / 2.0;
+        let edge = rgba(255, 255, 255, alpha(0.75));
+        disc(b, a, center, radius, rgba(20, 20, 20, alpha(0.30)));
+        ring(b, a, center, radius - 0.7, edge);
+        let knob = [
+            center[0] + left[0] * radius * 0.5,
+            center[1] - left[1] * radius * 0.5,
+        ];
+        disc(b, a, knob, radius * 0.36, rgba(255, 255, 255, alpha(0.55)));
+        ring(b, a, knob, radius * 0.36, edge);
+    }
 }
 fn mining_radius(radius: f32, progress: f32) -> f32 {
     if progress.is_finite() {

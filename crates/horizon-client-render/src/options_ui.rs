@@ -209,6 +209,7 @@ impl Opt {
             Opt::TouchButtonScale => "Control button size",
             Opt::TouchInteract => "Interact button",
             Opt::TouchLeftHand => "Left handed",
+            Opt::TouchStyle => "Control style",
             Opt::TouchSprintButton => "Sprint button",
             Opt::TouchSprintToggle => "Toggle sprint button",
             Opt::TouchInventoryControls => "Controls in inventory",
@@ -521,6 +522,14 @@ impl Opt {
                 .into(),
             ),
             Opt::TouchLeftHand => Some(if s.touch.left_handed { "ON" } else { "OFF" }.into()),
+            Opt::TouchStyle => Some(
+                if s.touch.style == crate::touch::Style::Pojav {
+                    "Pojav"
+                } else {
+                    "Horizon"
+                }
+                .into(),
+            ),
             Opt::TouchSprintButton => Some(if s.touch.sprint_button { "ON" } else { "OFF" }.into()),
             Opt::TouchSprintToggle => Some(if s.touch.sprint_toggle { "ON" } else { "OFF" }.into()),
             Opt::TouchInventoryControls => Some(
@@ -1039,6 +1048,13 @@ impl Opt {
             Opt::TouchOffhand => s.touch.offhand_button ^= true,
             Opt::TouchShield => s.touch.shield_button ^= true,
             Opt::TouchLeftHand => s.touch.left_handed ^= true,
+            Opt::TouchStyle => {
+                s.touch.style = if s.touch.style == crate::touch::Style::Pojav {
+                    crate::touch::Style::Horizon
+                } else {
+                    crate::touch::Style::Pojav
+                }
+            }
             Opt::TouchSprintButton => s.touch.sprint_button ^= true,
             Opt::TouchSprintToggle => s.touch.sprint_toggle ^= true,
             Opt::TouchInventoryControls => s.touch.inventory_controls ^= true,
@@ -2224,6 +2240,7 @@ impl OptionsUi {
                     Opt::AndroidGyroscope,
                     Opt::AndroidGyroSensitivity,
                     Opt::TouchLeftHand,
+                    Opt::TouchStyle,
                     Opt::TouchSwapJumpSneak,
                 ]));
                 #[cfg(target_os = "android")]
