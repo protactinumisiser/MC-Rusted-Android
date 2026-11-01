@@ -1,0 +1,99 @@
+# Builds the MC-Rusted Launcher APK on GitHub and attaches it to the run.
+# Start it by hand: Actions tab > Build APK > Run workflow.
+name: Build APK
+on:
+  workflow_dispatch:
+    inputs:
+      abi:
+        description: Phone CPU type (arm64-v8a fits almost every modern phone)
+        type: choice
+        default: arm64-v8a
+        options: [arm64-v8a, x86_64, armeabi-v7a, x86]
+permissions:
+  contents: read
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      HORIZON_TELEMETRY_URL: "off"
+      CARGO_TARGET_DIR: .local/ci-target
+      ABI: ${{ inputs.abi }}
+      # Optional: your own signing key (see the notes below the workflow).
+      KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Pick the Rust target for the chosen CPU type
+        run: |
+          case "$ABI" in
+            arm64-v8a)   echo "TARGET=aarch64-linux-android" >> "$GITHUB_ENV" ;;
+            armeabi-v7a) echo "TARGET=armv7-linux-androideabi" >> "$GITHUB_ENV" ;;
+            x86)         echo "TARGET=i686-linux-android" >> "$GITHUB_ENV" ;;
+            x86_64)      echo "TARGET=x86_64-linux-android" >> "$GITHUB_ENV" ;;
+          esac
+
+      - name: Install Android SDK parts
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "ndk;28.2.13676358" "build-tools;35.0.0" "platforms;android-35"
+
+      - name: Install Rust target
+        run: rustup target add "$TARGET"
+
+      - name: Install Gradle 8.14
+        run: |
+          curl -fsSL -o gradle.zip https://services.gradle.org/distributions/gradle-8.14-bin.zip
+          unzip -q gradle.zip -d "$RUNNER_TEMP"
+          echo "GRADLE_BIN=$RUNNER_TEMP/gradle-8.14/bin/gradle" >> "$GITHUB_ENV"
+
+      - name: Cache Rust downloads and build files
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .local/ci-target
+          key: apk-cargo-${{ inputs.abi }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: apk-cargo-${{ inputs.abi }}-
+
+      # The APK is signed with the key at .local/android/debug.keystore.
+      # A new random key every run would stop each build from updating the
+      # last one, so keep one key: from your secret if you added it, else
+      # from the cache (created on the first run, then reused).
+      - name: Restore the signing key from cache
+        if: env.KEYSTORE_B64 == ''
+        uses: actions/cache@v4
+        with:
+          path: .local/android/debug.keystore
+          key: apk-signing-key-v1
+
+      - name: Use the signing key from the secret
+        if: env.KEYSTORE_B64 != ''
+        run: |
+          mkdir -p .local/android
+          echo "$KEYSTORE_B64" | base64 -d > .local/android/debug.keystore
+
+      - name: Build the APK
+        run: >
+          python3 tools/android_build.py
+          --abi "$ABI" --public
+          --sdk "$ANDROID_HOME"
+          --java-home "$JAVA_HOME_17_X64"
+          --gradle "$GRADLE_BIN"
+
+      - name: Show the signing fingerprint
+        run: |
+          "$JAVA_HOME_17_X64/bin/keytool" -list -keystore .local/android/debug.keystore -storepass android | tail -n 2
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MC-Rusted-Launcher-${{ inputs.abi }}
+          path: .local/android/apk/${{ inputs.abi }}/horizon-android-public.apk
+          retention-days: 14
+          if-no-files-found: error
