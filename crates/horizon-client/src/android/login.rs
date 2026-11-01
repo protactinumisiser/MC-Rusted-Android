@@ -224,15 +224,15 @@ impl Login {
         // Dim the page behind the sheet, then draw the sheet lighter than
         // the page with an orange-brown outline so it stands apart.
         ui.rounded(0.0, 0.0, ui.w, ui.h, 0.0, horizon_client::hud::rgba(0, 0, 0, 190));
-        ui.rounded(x, y, w, h, 20.0, color::SURFACE);
-        ui.border(x, y, w, h, 20.0, color::TONAL);
+        ui.rounded(x, y, w, h, 20.0, color::surface());
+        ui.border(x, y, w, h, 20.0, color::tonal());
         if editing_name {
             ui.text(
                 Face::Medium,
                 24.0,
                 x + pad,
                 y + 20.0,
-                color::TEXT,
+                color::text(),
                 "Offline player name",
             );
             ui.text(
@@ -240,7 +240,7 @@ impl Login {
                 16.0,
                 x + pad,
                 y + 62.0,
-                color::MUTED,
+                color::muted(),
                 "Used when signed out of Microsoft.",
             );
             button(
@@ -263,7 +263,7 @@ impl Login {
         }
 
         let mut cursor = y + 18.0;
-        ui.text(Face::Medium, 24.0, x + pad, cursor, color::TEXT, "Accounts");
+        ui.text(Face::Medium, 24.0, x + pad, cursor, color::text(), "Accounts");
         cursor += 35.0 + 3.0;
         ui.text(
             Face::Medium,
@@ -271,9 +271,9 @@ impl Login {
             x + pad,
             cursor,
             if self.signed_in {
-                color::ACCENT
+                color::accent()
             } else {
-                color::MUTED
+                color::muted()
             },
             &self.status(offline_name),
         );
@@ -294,7 +294,7 @@ impl Login {
                 16.0,
                 x + pad,
                 cursor,
-                color::TEXT,
+                color::text(),
                 if self.signed_in {
                     "Account saved securely. Sessions renew automatically."
                 } else {
@@ -309,7 +309,7 @@ impl Login {
                 14.0,
                 x + pad,
                 cursor + row as f32 * 20.0,
-                color::TEXT,
+                color::text(),
                 text,
             );
         }
@@ -336,7 +336,7 @@ impl Login {
                 14.0,
                 x + pad,
                 name_y - 24.0,
-                color::MUTED,
+                color::muted(),
                 "Offline player name",
             );
             button(
