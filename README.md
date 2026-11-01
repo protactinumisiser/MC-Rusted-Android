@@ -1,7 +1,10 @@
-# Horizon Android
+# MC Rusted Android
 
 A native Android port of [Horizon](https://github.com/ludovic111/horizon), the
 Rust engine for Minecraft Java 26.3. Unofficial and in active development.
+
+This Fork is made to give a more improved
+General User Interface (GUI) and more improved touch controls, more features are planned. 
 
 **Android 9+ · Vulkan · Four touch schemes · Sandboxed `.hmod` mods**
 
