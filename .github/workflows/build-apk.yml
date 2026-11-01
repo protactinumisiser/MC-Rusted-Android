@@ -89,6 +89,9 @@ jobs:
           mkdir -p .local/android
           echo "$KEYSTORE_B64" | base64 -d > .local/android/debug.keystore
 
+      - name: Prepare engine tables (downloads from Mojang, takes a while)
+        run: python3 tools/android_prepare.py
+
       - name: Build the APK
         run: >
           python3 tools/android_build.py
