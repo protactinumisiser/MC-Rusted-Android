@@ -1,14 +1,14 @@
 plugins { id 'com.android.application' version '8.11.1' }
 
 android {
-    namespace 'dev.horizon.android'
+    namespace 'com.mc.rust'
     compileSdk 35
     defaultConfig {
-        applicationId providers.gradleProperty('appId').getOrElse('dev.horizon.android')
+        applicationId providers.gradleProperty('appId').getOrElse('com.mc.rust')
         minSdk providers.gradleProperty('minSdk').getOrElse('28').toInteger()
         targetSdk 35
-        versionCode 28
-        versionName '0.7.6'
+        versionCode 29
+        versionName '0.8.0'
         ndk { abiFilters providers.gradleProperty('abi').get() }
     }
     signingConfigs {
