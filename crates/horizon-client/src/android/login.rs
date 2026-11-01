@@ -173,109 +173,21 @@ impl Login {
     ) {
         targets.clear();
         let w = (ui.w - 32.0).min(720.0);
-        let h = (ui.h - 24.0).min(550.0);
-        let x = (ui.w - w) / 2.0;
-        let y = (ui.h - h) / 2.0;
-        ui.rounded(x, y, w, h, 8.0, color::BG);
-        if editing_name {
-            ui.text(
-                Face::Medium,
-                24.0,
-                x + 20.0,
-                y + 20.0,
-                color::TEXT,
-                "Offline player name",
-            );
-            ui.text(
-                Face::Regular,
-                16.0,
-                x + 20.0,
-                y + 66.0,
-                color::MUTED,
-                "Used when signed out of Microsoft.",
-            );
-            button(
-                ui,
-                targets,
-                [x + 20.0, y + 100.0, w - 40.0, 44.0],
-                offline_name,
-                Action::Field("name"),
-                false,
-            );
-            button(
-                ui,
-                targets,
-                [x + 20.0, y + h - 56.0, w - 40.0, 36.0],
-                "Done",
-                Action::FinishNameEdit,
-                true,
-            );
-            return;
-        }
-
-        ui.text(
-            Face::Medium,
-            24.0,
-            x + 20.0,
-            y + 18.0,
-            color::TEXT,
-            "Accounts",
-        );
-        ui.text(
-            Face::Medium,
-            18.0,
-            x + 20.0,
-            y + 58.0,
-            if self.signed_in {
-                color::ACCENT
-            } else {
-                color::MUTED
-            },
-            &self.status(offline_name),
-        );
-        if let Some(SignInState::Code(code)) = &self.state {
-            button(
-                ui,
-                targets,
-                [x + 20.0, y + 96.0, w - 40.0, 48.0],
-                &format!("{}    /    Copy code", code.user_code),
-                Action::CopyLoginCode,
-                false,
-            );
-        } else {
-            ui.text(
-                Face::Regular,
-                16.0,
-                x + 20.0,
-                y + 104.0,
-                color::TEXT,
-                if self.signed_in {
-                    "Account saved securely. Sessions renew automatically."
-                } else {
-                    "Your password is entered in Microsoft's browser."
-                },
-            );
-        }
+        let pad = 20.0;
+        let gap = 12.0;
+        let available = ui.h - 16.0;
+        // Wrap the status message first so the sheet can be sized to fit.
         let text = match &self.state {
             Some(SignInState::Starting) => "Requesting a sign-in code...",
             _ => &self.message,
         };
-        let limit = ((w - 40.0) / 7.5).max(20.0) as usize;
+        let limit = ((w - 2.0 * pad) / 7.5).max(20.0) as usize;
+        let mut lines: Vec<String> = Vec::new();
         let mut line = String::new();
-        let mut row = 0;
         for word in text.split_whitespace() {
             if line.len() + word.len() + 1 > limit {
-                ui.text(
-                    Face::Regular,
-                    14.0,
-                    x + 20.0,
-                    y + 166.0 + row as f32 * 20.0,
-                    color::TEXT,
-                    &line,
-                );
-                row += 1;
-                line.clear();
-                if row >= 5 {
+                lines.push(std::mem::take(&mut line));
+                if lines.len() >= 5 {
                     break;
                 }
             }
@@ -284,29 +196,153 @@ impl Login {
             }
             line.push_str(word);
         }
-        if row < 5 {
+        if lines.len() < 5 && !line.is_empty() {
+            lines.push(line);
+        }
+        let in_code = matches!(self.state, Some(SignInState::Code(_)));
+        let show_name = !self.pending();
+        let show_review = self.message.contains("not approved by Mojang");
+        let h = if editing_name {
+            220.0f32.min(available)
+        } else {
+            let mut total = 18.0 + 35.0 + 3.0 + 26.0 + gap; // title + status
+            total += if in_code { 48.0 } else { 23.0 } + gap; // sign-in note or code
+            if !lines.is_empty() {
+                total += lines.len() as f32 * 20.0 + gap;
+            }
+            if show_name {
+                total += 20.0 + 4.0 + 38.0 + gap;
+            }
+            if show_review {
+                total += 30.0 + 10.0;
+            }
+            total += 42.0 + 10.0 + 38.0 + 10.0 + 36.0 + pad; // buttons
+            total.min(available)
+        };
+        let x = (ui.w - w) / 2.0;
+        let y = (ui.h - h) / 2.0;
+        // Dim the page behind the sheet, then draw the sheet lighter than
+        // the page with an orange-brown outline so it stands apart.
+        ui.rounded(0.0, 0.0, ui.w, ui.h, 0.0, horizon_client::hud::rgba(0, 0, 0, 190));
+        ui.rounded(x, y, w, h, 20.0, color::SURFACE);
+        ui.border(x, y, w, h, 20.0, color::TONAL);
+        if editing_name {
+            ui.text(
+                Face::Medium,
+                24.0,
+                x + pad,
+                y + 20.0,
+                color::TEXT,
+                "Offline player name",
+            );
+            ui.text(
+                Face::Regular,
+                16.0,
+                x + pad,
+                y + 62.0,
+                color::MUTED,
+                "Used when signed out of Microsoft.",
+            );
+            button(
+                ui,
+                targets,
+                [x + pad, y + 100.0, w - 2.0 * pad, 44.0],
+                offline_name,
+                Action::Field("name"),
+                false,
+            );
+            button(
+                ui,
+                targets,
+                [x + pad, y + h - 56.0, w - 2.0 * pad, 40.0],
+                "Done",
+                Action::FinishNameEdit,
+                true,
+            );
+            return;
+        }
+
+        let mut cursor = y + 18.0;
+        ui.text(Face::Medium, 24.0, x + pad, cursor, color::TEXT, "Accounts");
+        cursor += 35.0 + 3.0;
+        ui.text(
+            Face::Medium,
+            18.0,
+            x + pad,
+            cursor,
+            if self.signed_in {
+                color::ACCENT
+            } else {
+                color::MUTED
+            },
+            &self.status(offline_name),
+        );
+        cursor += 26.0 + gap;
+        if let Some(SignInState::Code(code)) = &self.state {
+            button(
+                ui,
+                targets,
+                [x + pad, cursor, w - 2.0 * pad, 48.0],
+                &format!("{}    /    Copy code", code.user_code),
+                Action::CopyLoginCode,
+                false,
+            );
+            cursor += 48.0 + gap;
+        } else {
+            ui.text(
+                Face::Regular,
+                16.0,
+                x + pad,
+                cursor,
+                color::TEXT,
+                if self.signed_in {
+                    "Account saved securely. Sessions renew automatically."
+                } else {
+                    "Your password is entered in Microsoft's browser."
+                },
+            );
+            cursor += 23.0 + gap;
+        }
+        for (row, text) in lines.iter().enumerate() {
             ui.text(
                 Face::Regular,
                 14.0,
-                x + 20.0,
-                y + 166.0 + row as f32 * 20.0,
+                x + pad,
+                cursor + row as f32 * 20.0,
                 color::TEXT,
-                &line,
+                text,
             );
         }
-        if !self.pending() {
+        // Everything below is anchored to the bottom of the sheet, so the
+        // buttons keep an even rhythm whatever the message length.
+        let half = (w - 2.0 * pad - 12.0) / 2.0;
+        let done_y = y + h - pad - 36.0;
+        let row_y = done_y - 10.0 - 38.0;
+        let sign_y = row_y - 10.0 - 42.0;
+        if show_review {
+            button(
+                ui,
+                targets,
+                [x + pad, sign_y - 10.0 - 30.0, w - 2.0 * pad, 30.0],
+                "Request Minecraft API approval",
+                Action::ReviewApp,
+                false,
+            );
+        }
+        if show_name {
+            let name_y = sign_y - gap - 38.0 - if show_review { 40.0 } else { 0.0 };
             ui.text(
                 Face::Regular,
                 14.0,
-                x + 20.0,
-                y + h - 247.0,
+                x + pad,
+                name_y - 24.0,
                 color::MUTED,
                 "Offline player name",
             );
             button(
                 ui,
                 targets,
-                [x + 20.0, y + h - 226.0, w - 40.0, 38.0],
+                [x + pad, name_y, w - 2.0 * pad, 38.0],
                 if offline_name.is_empty() {
                     "Enter an offline name"
                 } else {
@@ -316,18 +352,7 @@ impl Login {
                 false,
             );
         }
-        let half = (w - 52.0) / 2.0;
-        if self.message.contains("not approved by Mojang") {
-            button(
-                ui,
-                targets,
-                [x + 20.0, y + h - 183.0, w - 40.0, 30.0],
-                "Request Minecraft API approval",
-                Action::ReviewApp,
-                false,
-            );
-        }
-        let (label, action) = if matches!(self.state, Some(SignInState::Code(_))) {
+        let (label, action) = if in_code {
             ("Copy code and open browser", Action::LoginLink)
         } else if self.pending() {
             ("Restart browser sign-in", Action::SignIn)
@@ -344,7 +369,7 @@ impl Login {
         button(
             ui,
             targets,
-            [x + 20.0, y + h - 148.0, w - 40.0, 42.0],
+            [x + pad, sign_y, w - 2.0 * pad, 42.0],
             label,
             action,
             true,
@@ -352,7 +377,7 @@ impl Login {
         button(
             ui,
             targets,
-            [x + 20.0, y + h - 98.0, half, 38.0],
+            [x + pad, row_y, half, 38.0],
             "Use a device code instead",
             Action::DeviceSignIn,
             false,
@@ -360,31 +385,27 @@ impl Login {
         button(
             ui,
             targets,
-            [x + 32.0 + half, y + h - 98.0, half, 38.0],
+            [x + pad + half + 12.0, row_y, half, 38.0],
             if self.pending() {
                 "Cancel sign-in"
+            } else if self.profile.is_some() {
+                "Sign out"
             } else {
-                if self.profile.is_some() {
-                    "Sign out"
-                } else {
-                    "Close"
-                }
+                "Close"
             },
             if self.pending() {
                 Action::CancelLogin
+            } else if self.profile.is_some() {
+                Action::SignOut
             } else {
-                if self.profile.is_some() {
-                    Action::SignOut
-                } else {
-                    Action::CloseLogin
-                }
+                Action::CloseLogin
             },
             false,
         );
         button(
             ui,
             targets,
-            [x + 20.0, y + h - 52.0, w - 40.0, 36.0],
+            [x + pad, done_y, w - 2.0 * pad, 36.0],
             if self.pending() {
                 "Back (sign-in continues)"
             } else {

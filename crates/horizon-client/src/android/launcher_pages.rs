@@ -109,11 +109,14 @@ pub(super) fn button(
         base
     };
     let label = ui.fit_text(Face::Medium, font, label, w - 2.0 * padding);
+    // Centre the label in the button, both ways (a text line is 1.45 x size).
+    let label_width = ui.measure(Face::Medium, font, &label);
+    let line = (font * 1.45).round();
     ui.text(
         Face::Medium,
         font,
-        x + padding,
-        y + 11.0,
+        x + (w - label_width) / 2.0,
+        y + (h - line) / 2.0,
         if accent {
             color::ON_ACCENT
         } else {
@@ -257,10 +260,10 @@ impl Launcher {
             } else if w < 700.0 {
                 24.0
             } else {
-                32.0
+                28.0
             },
             32.0,
-            if w < 700.0 { 12.0 } else { 28.0 },
+            if w < 700.0 { 8.0 } else { 12.0 },
             color::TEXT,
             &format!("MC-Rusted Launcher {}", crate::backend::VERSION),
         );
@@ -271,7 +274,7 @@ impl Launcher {
             Face::Regular,
             14.0,
             32.0,
-            if w < 700.0 { 44.0 } else { 74.0 },
+            if w < 700.0 { 44.0 } else { 54.0 },
             if self.login.signed_in {
                 color::ACCENT
             } else {
@@ -281,7 +284,7 @@ impl Launcher {
         );
         // The current section, as a round icon and its name.
         {
-            let band = 92.0;
+            let band = 88.0;
             let current = self.catalog.page;
             ui.rounded(32.0, band, 34.0, 34.0, 17.0, color::TONAL);
             draw_icon(&mut ui, page_icon(current), 49.0, band + 17.0, 18.0, color::ACCENT);

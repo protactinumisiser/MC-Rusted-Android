@@ -433,7 +433,8 @@ pub fn draw_ui(ui: &mut Ui<'_>) {
     let x = (ui.w - w) / 2.0;
     let y = ((ui.h - height) / 2.0).max(0.0);
     ui.rounded(0.0, 0.0, ui.w, ui.h, 0.0, rgba(0, 0, 0, 180));
-    ui.rounded(x, y, w, height, 2.0, color::BG);
+    ui.rounded(x, y, w, height, 16.0, color::SURFACE);
+    ui.border(x, y, w, height, 16.0, color::TONAL);
     ui.text(
         Face::Medium,
         20.0,
