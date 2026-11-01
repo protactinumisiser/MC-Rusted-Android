@@ -22,7 +22,7 @@ jobs:
       HORIZON_TELEMETRY_URL: "off"
       CARGO_TARGET_DIR: .local/ci-target
       ABI: ${{ inputs.abi }}
-      # Optional: your own signing key (see the notes below the workflow).
+      # Optional: your own signing key.
       KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -40,8 +40,21 @@ jobs:
 
       - name: Install Android SDK parts
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "ndk;28.2.13676358" "build-tools;35.0.0" "platforms;android-35"
+          SDKM="$(command -v sdkmanager || true)"
+          if [ -z "$SDKM" ]; then
+            SDKM="$(ls "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -n 1 || true)"
+          fi
+          if [ -z "$SDKM" ]; then
+            # Not on this runner image: fetch Google's command-line tools.
+            curl -fsSL -o cmdline.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+            mkdir -p "$ANDROID_HOME/cmdline-tools"
+            unzip -q cmdline.zip -d "$ANDROID_HOME/cmdline-tools"
+            mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+            SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          echo "Using $SDKM"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "ndk;28.2.13676358" "build-tools;35.0.0" "platforms;android-35"
 
       - name: Install Rust target
         run: rustup target add "$TARGET"
@@ -62,10 +75,7 @@ jobs:
           key: apk-cargo-${{ inputs.abi }}-${{ hashFiles('Cargo.lock') }}
           restore-keys: apk-cargo-${{ inputs.abi }}-
 
-      # The APK is signed with the key at .local/android/debug.keystore.
-      # A new random key every run would stop each build from updating the
-      # last one, so keep one key: from your secret if you added it, else
-      # from the cache (created on the first run, then reused).
+      # One signing key across runs, so each build can update the last.
       - name: Restore the signing key from cache
         if: env.KEYSTORE_B64 == ''
         uses: actions/cache@v4
