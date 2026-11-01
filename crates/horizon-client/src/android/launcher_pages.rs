@@ -7,6 +7,11 @@ use horizon_client::osk::Output;
 const NAV_HEIGHT: f32 = 84.0;
 const NAV_RESERVED: f32 = 100.0;
 
+/// Corner radius for hover, press and focus highlights, matching the rounded
+/// buttons they sit on (never a hard square).
+fn target_radius(rect: [f32; 4]) -> f32 {
+    (rect[3] / 2.0).min(rect[2] / 2.0).min(14.0)
+}
 fn page_icon(page: Page) -> Icon {
     match page {
         Page::Play => Icon::Play,
@@ -523,7 +528,7 @@ impl Launcher {
                         self.catalog.config.shader_source
                     }) == origin
                     {
-                        ui.border(rect[0], rect[1], rect[2], rect[3], 1.0, color::TEXT);
+                        ui.border(rect[0], rect[1], rect[2], rect[3], target_radius(rect), color::TEXT);
                     }
                 }
             }
@@ -1182,7 +1187,14 @@ impl Launcher {
         if let Some(index) = self.focus
             && let Some(([x, y, w, h], _)) = self.targets.get(index)
         {
-            ui.border(*x - 2.0, *y - 2.0, *w + 4.0, *h + 4.0, 2.0, color::TEXT);
+            ui.border(
+                *x - 2.0,
+                *y - 2.0,
+                *w + 4.0,
+                *h + 4.0,
+                target_radius([*x, *y, *w, *h]) + 2.0,
+                color::ACCENT,
+            );
             self.cursor = (
                 f64::from((x + w / 2.0) * ui.density),
                 f64::from((y + h / 2.0) * ui.density),
@@ -1204,7 +1216,7 @@ impl Launcher {
                     *y,
                     *w,
                     *h,
-                    2.0,
+                    target_radius([*x, *y, *w, *h]),
                     horizon_client::hud::rgba(255, 255, 255, 48),
                 );
             }
@@ -1220,7 +1232,7 @@ impl Launcher {
                 *y,
                 *w,
                 *h,
-                2.0,
+                target_radius([*x, *y, *w, *h]),
                 horizon_client::hud::rgba(255, 255, 255, 48),
             );
         }
@@ -1262,26 +1274,6 @@ impl Launcher {
         }
         self.feedback = action.map(|action| (action, std::time::Instant::now()));
         self.focus = None;
-        if action.is_some() && horizon_client::official_install::ready(&self.home) {
-            let audio = self.audio.get_or_insert_with(|| {
-                let mut audio = horizon_client::audio::Audio::new(
-                    &self.home.join(".local/horizon-client/26.3"),
-                );
-                let settings = horizon_client::settings::Settings::load(
-                    &self
-                        .catalog
-                        .config
-                        .game_home(&self.home)
-                        .join("options.txt"),
-                );
-                audio.master = settings.volumes[0];
-                let mut volumes = settings.volumes;
-                volumes[0] = 1.0;
-                horizon_client::settings::set_source_volumes(volumes);
-                audio
-            });
-            audio.play_button_click();
-        }
         match action {
             Some(Action::Immersive) => {
                 self.catalog.config.screen.immersive ^= true;
@@ -1344,7 +1336,7 @@ impl Launcher {
                 self.catalog.status = if crate::platform::open_documents(&id) {
                     "Opened in Files. Return here after copying files.".into()
                 } else {
-                    "Open the system Files app and choose Horizon Android.".into()
+                    "Open the system Files app and choose MC Rusted.".into()
                 };
             }
             Some(Action::Import(kind)) => {
