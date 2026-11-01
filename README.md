@@ -10,10 +10,6 @@ General User Interface (GUI) and more improved touch controls, more features are
 
 (docs/android.md) · [Contribute](CONTRIBUTING_ANDROID.md) ·
 
-## In Testing
-
-- Material 3 like GUI in testing. 
-
 ## What works
 
 - Four touch schemes: joystick or D-pad, each with tap or crosshair aiming.
@@ -48,29 +44,13 @@ POCO M8 Pro · 16 chunks · Fancy graphics
 | --- | --- |
 | ![Steve on Android with third-person camera, touch controls and FPS overlay](docs/media/android/third-person-desert.png) | ![Desert terrain on Android with touch controls and FPS overlay](docs/media/android/desert-panorama.png) |
 
-### Hypixel Arcade gameplay
-
-https://youtu.be/gWK01tGlyFI
-
-*Disasters gameplay recorded on Poco M8 Pro. FPS readings in the footage are not a controlled benchmark.*
-
 ### On a flip phone
 
 Fujitsu F-03L · Portrait mode
 
 | **Main menu** | **In-game** |
 | --- | --- |
-| <img src="docs/media/android/fujitsu-f03l-menu.png" alt="Horizon main menu on a Fujitsu F-03L flip phone in portrait mode" width="220"> | <img src="docs/media/android/fujitsu-f03l-gameplay.png" alt="Minecraft world running on a Fujitsu F-03L flip phone in portrait mode" width="220"> |
-
-## Help build it
-
-Try a developer build, send a reproducible bug report, or contribute a focused
-pull request against `android`. Touch input, accessibility, hardware controllers,
-Android lifecycle and real-phone profiling are useful areas to help.
-[Start here](CONTRIBUTING_ANDROID.md).
-
-If the port is useful to you, **star the repository** so other players and
-contributors can find it.
+| <img src="docs/media/android/fujitsu-f03l-menu.png" alt="Horizon main menu on a Fujitsu F-03L flip phone in portrait mode" width="220"> | <img src="docs/media/android/fujitsu-f03l-gameplay.png" alt="Minecraft world running on a Fujitsu F-03L flip phone in portrait mode" width="220"> 
 
 ## Builds and source
 
@@ -81,7 +61,7 @@ sound from Mojang and the touch textures from Mojang's official sample repositor
 No PC resource preparation is needed to install and play on the phone.
 [Publication notes](docs/android-publication.md).
 
-This branch preserves upstream authorship and history. [Upstream integration](docs/android-upstream.json)
+This branch preserves upstream authorship and history. [Upstream integration](docs/android-upstrjson)
 records reviewed merges. Original deployment workflows remain disabled in this fork.
 
 Original copyright and third-party notices are retained in [LICENSE](LICENSE)
