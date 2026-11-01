@@ -127,9 +127,19 @@ impl Placement {
         }
     }
 }
+/// How the on-screen controls look; what they do is the same.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Style {
+    /// The game's own sprites.
+    #[default]
+    Horizon,
+    /// Flat translucent keys with text labels and WASD, as PojavLauncher draws them.
+    Pojav,
+}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
+    pub style: Style,
     pub mode: Mode,
     pub split_controls: bool,
     pub contextual_interact: bool,
@@ -209,6 +219,7 @@ impl Default for Settings {
         layouts[2][Control::Sneak as usize] = Placement::new(0.13, 0.76, 0.10);
         layouts[2][Control::Jump as usize] = Placement::new(0.90, 0.78, 0.14);
         Self {
+            style: Style::Horizon,
             mode: Mode::Crosshair,
             split_controls: false,
             contextual_interact: false,
